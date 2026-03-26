@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>블로그 지수 분석기</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f0f4f8; --white:#fff; --border:#dde3ea;
+  --accent:#00b894; --accent-dark:#007f68; --accent-light:#e8f8f5;
+  --blue:#0077ff; --red:#e74c3c; --orange:#f39c12;
+  --text:#1a2535; --text-dim:#4a5568; --text-muted:#8fa3b8;
+  --label:#e74c3c;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:14px;min-height:100vh;}
+.top-bar{background:var(--accent);padding:12px 0;text-align:center;color:white;font-size:13px;font-weight:600;}
+.container{max-width:900px;margin:0 auto;padding:28px 16px 60px;}
+.search-wrap{display:flex;gap:8px;margin-bottom:20px;}
+.search-wrap input{flex:1;border:2px solid var(--border);border-radius:8px;padding:13px 16px;font-size:15px;font-family:'Noto Sans KR',sans-serif;outline:none;background:var(--white);color:var(--text);transition:border-color .2s;}
+.search-wrap input:focus{border-color:var(--accent);}
+.btn-search{background:var(--accent);border:none;border-radius:8px;padding:13px 24px;color:white;font-size:15px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;white-space:nowrap;transition:background .2s;}
+.btn-search:hover{background:var(--accent-dark);}
+.btn-search:disabled{opacity:.6;cursor:not-allowed;}
+.info-box{background:var(--accent-light);border:1px solid rgba(0,184,148,.3);border-radius:8px;padding:16px 20px;margin-bottom:20px;font-size:13px;color:var(--text-dim);line-height:1.9;}
+.info-box strong{color:var(--accent-dark);}
+.error-box{display:none;background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:14px 18px;color:var(--red);font-size:13px;margin-bottom:16px;align-items:center;gap:8px;}
+.error-box.show{display:flex;}
+.loading-box{display:none;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:32px 28px;margin-bottom:20px;}
+.loading-box.show{display:block;}
+.loading-top{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
+.loading-title{font-size:15px;font-weight:700;}
+.loading-sub{font-size:12px;color:var(--text-muted);margin-top:3px;}
+.steps{display:flex;flex-direction:column;gap:6px;}
+.step{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;font-size:13px;color:var(--text-muted);transition:all .3s;}
+.step.active{background:rgba(0,184,148,.08);color:var(--accent-dark);font-weight:600;border:1px solid rgba(0,184,148,.2);}
+.step.done{color:var(--accent-dark);}
+.step .si{width:20px;height:20px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;color:var(--text-muted);}
+.step.active .si{background:var(--accent);color:white;animation:pulse 1s infinite;}
+.step.done .si{background:var(--accent);color:white;}
+.result-wrap{display:none;}
+.result-wrap.show{display:block;}
+.section-header{display:flex;align-items:center;justify-content:space-between;background:var(--white);border:1px solid var(--border);border-bottom:none;border-radius:12px 12px 0 0;padding:14px 20px;}
+.section-title-text{font-size:15px;font-weight:700;}
+.badge-live{display:inline-flex;align-items:center;gap:5px;background:var(--accent-light);color:var(--accent-dark);border:1px solid rgba(0,184,148,.3);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;}
+.badge-live .dl{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 1.5s infinite;}
+.blog-title-card{background:var(--white);border:1px solid var(--border);border-bottom:none;padding:16px 20px;border-top:3px solid var(--accent);}
+.cell-label{font-size:11px;color:var(--label);font-weight:700;margin-bottom:4px;letter-spacing:.3px;}
+.cell-value{font-size:14px;font-weight:500;color:var(--text);}
+.cell-value.big{font-size:16px;font-weight:700;}
+.cell-value.muted{color:var(--text-muted);font-size:12px;}
+.cell-value.na{color:var(--text-muted);font-style:italic;font-size:13px;}
+.data-table{width:100%;border-collapse:collapse;background:var(--white);border:1px solid var(--border);}
+.data-table td{padding:12px 16px;border:1px solid var(--border);vertical-align:top;width:33%;}
+.src-bar{padding:8px 16px;background:#f8f9fa;border:1px solid var(--border);border-top:none;font-size:11px;color:var(--text-muted);display:flex;gap:12px;flex-wrap:wrap;}
+.src-chip{display:inline-flex;align-items:center;gap:4px;}
+.src-chip .dot{width:7px;height:7px;border-radius:50%;}
+.grade-section{background:var(--white);border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;}
+.grade-row{display:grid;grid-template-columns:1fr 1fr 1fr;}
+.grade-cell{padding:16px 20px;border-top:1px solid var(--border);border-right:1px solid var(--border);}
+.grade-cell:last-child{border-right:none;}
+.grade-cell-label{font-size:11px;color:var(--label);font-weight:700;margin-bottom:8px;}
+.grade-badge{display:inline-flex;align-items:center;padding:5px 14px;border-radius:20px;font-size:14px;font-weight:700;}
+.grade-badge.optimized{background:rgba(0,184,148,.12);color:var(--accent-dark);border:1.5px solid rgba(0,184,148,.4);}
+.grade-badge.semi{background:rgba(0,119,255,.1);color:var(--blue);border:1.5px solid rgba(0,119,255,.3);}
+.grade-badge.normal{background:rgba(243,156,18,.1);color:var(--orange);border:1.5px solid rgba(243,156,18,.3);}
+.grade-badge.low{background:rgba(231,76,60,.1);color:var(--red);border:1.5px solid rgba(231,76,60,.3);}
+.score-display{font-family:'Space Mono',monospace;font-size:22px;font-weight:700;}
+.score-display.optimized{color:var(--accent);}
+.score-display.semi{color:var(--blue);}
+.score-display.normal{color:var(--orange);}
+.score-display.low{color:var(--red);}
+.grade-note{font-size:10px;color:var(--text-muted);margin-top:5px;line-height:1.5;}
+.analysis-wrap{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-top:16px;}
+.analysis-header{font-size:13px;font-weight:700;color:var(--accent-dark);margin-bottom:12px;}
+.analysis-body{font-size:13px;line-height:1.9;color:var(--text-dim);white-space:pre-wrap;min-height:20px;}
+.cursor{display:inline-block;width:2px;height:13px;background:var(--accent);animation:blink .8s step-end infinite;vertical-align:middle;margin-left:1px;}
+.history-wrap{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-top:16px;}
+.history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.history-title{font-size:13px;font-weight:700;color:var(--text-dim);}
+.btn-clr{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--text-muted);cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+.btn-clr:hover{border-color:var(--red);color:var(--red);}
+.history-items{display:flex;flex-direction:column;gap:6px;}
+.history-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#fafcff;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:background .15s;}
+.history-item:hover{background:var(--accent-light);}
+.hid{font-size:13px;font-weight:600;}
+.ht{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.hgt{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;}
+.hgt.optimized{background:rgba(0,184,148,.12);color:var(--accent-dark);}
+.hgt.semi{background:rgba(0,119,255,.1);color:var(--blue);}
+.hgt.normal{background:rgba(243,156,18,.1);color:var(--orange);}
+.hgt.low{background:rgba(231,76,60,.1);color:var(--red);}
+.empty-h{text-align:center;color:var(--text-muted);font-size:13px;padding:16px;}
+.divider{text-align:center;font-size:11px;color:var(--text-muted);margin:20px 0 14px;display:flex;align-items:center;gap:10px;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@media(max-width:600px){.grade-row{grid-template-columns:1fr;}.grade-cell{border-right:none;}.data-table td{display:block;width:100%;}}
+</style>
+</head>
+<body>
+<div class="top-bar">🔍 네이버 블로그 지수 분석기</div>
+<div class="container">
+
+  <div class="search-wrap">
+    <input type="text" id="blogInput" placeholder="블로그 ID 또는 URL 입력 (예: neoblaze)"/>
+    <button class="btn-search" id="searchBtn" onclick="analyze()">🔍 분석하기</button>
+  </div>
+
+  <div class="info-box">
+    <strong>📌 BLOG 분석 서비스</strong><br>
+    서버에서 네이버 블로그 API를 직접 호출하여 <strong>실제 데이터</strong>를 수집합니다.<br>
+    전체방문자, 오늘방문자, 게시글 수, 생성일, 팔로워 등을 실측값으로 가져옵니다.<br>
+    등급은 수집된 실데이터를 기반으로 AI가 산정합니다.
+  </div>
+
+  <div class="error-box" id="errorBox">⚠️ <span id="errorMsg"></span></div>
+
+  <div class="loading-box" id="loadingBox">
+    <div class="loading-top">
+      <div class="spinner"></div>
+      <div>
+        <div class="loading-title">블로그 분석 중...</div>
+        <div class="loading-sub" id="loadingSub">서버에서 네이버 데이터를 수집합니다</div>
+      </div>
+    </div>
+    <div class="steps">
+      <div class="step active" id="st1"><div class="si">1</div> 서버 → 네이버 블로그 API 직접 호출</div>
+      <div class="step" id="st2"><div class="si">2</div> 방문자 · 게시글 · 생성일 파싱</div>
+      <div class="step" id="st3"><div class="si">3</div> 실데이터 기반 AI 등급 산정</div>
+      <div class="step" id="st4"><div class="si">4</div> 종합 분석 리포트 생성</div>
+    </div>
+  </div>
+
+  <div class="result-wrap" id="resultWrap">
+    <div class="section-header">
+      <span class="section-title-text">네이버비 기본 블로그분석</span>
+      <span class="badge-live"><div class="dl"></div> LIVE</span>
+    </div>
+    <div class="blog-title-card">
+      <div class="cell-label">블로그 제목</div>
+      <div style="font-size:18px;font-weight:700;" id="rBlogTitle">—</div>
+    </div>
+    <table class="data-table">
+      <tr>
+        <td><div class="cell-label">블로그닉네임</div><div class="cell-value" id="rNick">—</div></td>
+        <td><div class="cell-label">블로그아이디</div><div class="cell-value" id="rId">—</div></td>
+        <td><div class="cell-label">대표 운영주제</div><div class="cell-value" id="rTopic">—</div></td>
+      </tr>
+      <tr>
+        <td><div class="cell-label">전체방문자</div><div class="cell-value big" id="rTotalVisit">—</div></td>
+        <td><div class="cell-label">오늘방문자</div><div class="cell-value big" id="rTodayVisit">—</div></td>
+        <td><div class="cell-label">전체 팔로워/팔로잉</div><div class="cell-value" id="rFollower">—</div></td>
+      </tr>
+      <tr>
+        <td><div class="cell-label">생성일</div><div class="cell-value" id="rCreated">—</div></td>
+        <td><div class="cell-label">운영기간 / 변경이력</div><div class="cell-value" id="rPeriod">—</div></td>
+        <td><div class="cell-label">애드포스트</div><div class="cell-value" id="rAdpost">—</div></td>
+      </tr>
+      <tr>
+        <td><div class="cell-label">전체게시글</div><div class="cell-value big" id="rTotalPost">—</div></td>
+        <td><div class="cell-label">총 스크랩</div><div class="cell-value" id="rScrap">—</div></td>
+        <td><div class="cell-label">조회시간</div><div class="cell-value muted" id="rFetchTime">—</div></td>
+      </tr>
+    </table>
+    <div class="src-bar" id="srcBar"></div>
+    <div class="grade-section">
+      <div class="grade-row">
+        <div class="grade-cell">
+          <div class="grade-cell-label">🕐 히스토리 진단</div>
+          <div style="font-size:14px;font-weight:500;" id="rPeriodLabel">—</div>
+        </div>
+        <div class="grade-cell">
+          <div class="grade-cell-label">📊 히스토리 스코어</div>
+          <div class="score-display" id="rScore">—</div>
+        </div>
+        <div class="grade-cell">
+          <div class="grade-cell-label">🏆 히스토리 등급</div>
+          <div id="rGrade">—</div>
+          <div class="grade-note">※ 실데이터 기반 AI 산정값</div>
+        </div>
+      </div>
+    </div>
+    <div class="divider">AI 종합 분석 리포트</div>
+    <div class="analysis-wrap">
+      <div class="analysis-header">📋 블로그 종합 진단</div>
+      <div class="analysis-body" id="rAnalysis"></div>
+    </div>
+  </div>
+
+  <div class="history-wrap">
+    <div class="history-header">
+      <div class="history-title">📂 최근 분석 기록</div>
+      <button class="btn-clr" onclick="clearHistory()">기록 초기화</button>
+    </div>
+    <div class="history-items" id="historyList"></div>
+  </div>
+</div>
+
+<script>
+// ✅ 배포 후 여기에 Vercel URL을 입력하세요
+// 예: const BASE_URL = 'https://blog-analyzer-abc.vercel.app';
+const BASE_URL = '';  // 로컬 테스트시 비워두면 상대경로로 동작
+
+const CLAUDE_API = "https://api.anthropic.com/v1/messages";
+let hist = JSON.parse(localStorage.getItem('bh6') || '[]');
+
+function extractId(v) {
+  v = v.trim().replace(/\/+$/, '');
+  const m = v.match(/blog\.naver\.com\/([^/?#\s]+)/);
+  if (m) return m[1];
+  if (!v.includes('/') && !v.includes('.')) return v;
+  return null;
+}
+
+function gc(g) {
+  if (!g) return 'normal';
+  const s = g.toLowerCase();
+  if (s.includes('최적화') && !s.includes('준')) return 'optimized';
+  if (s.includes('준최적')) return 'semi';
+  if (s.includes('저품')) return 'low';
+  return 'normal';
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`st${i}`);
+    const si = el.querySelector('.si');
+    if (i < n)      { el.className = 'step done';   si.textContent = '✓'; }
+    else if (i===n) { el.className = 'step active'; si.textContent = i; }
+    else            { el.className = 'step';         si.textContent = i; }
+  }
+}
+
+function showErr(msg) { document.getElementById('errorMsg').textContent = msg; document.getElementById('errorBox').classList.add('show'); }
+function hideErr() { document.getElementById('errorBox').classList.remove('show'); }
+
+function setCell(id, val, big=false) {
+  const el = document.getElementById(id);
+  const v = val || '비공개';
+  el.textContent = v;
+  el.className = 'cell-value' + (big ? ' big' : '') + (v === '비공개' || v === '확인불가' ? ' na' : '');
+}
+
+async function analyze() {
+  const input = document.getElementById('blogInput').value;
+  const blogId = extractId(input);
+  hideErr();
+  document.getElementById('resultWrap').classList.remove('show');
+  if (!blogId) { showErr('블로그 ID 또는 URL을 올바르게 입력해주세요.'); return; }
+
+  const btn = document.getElementById('searchBtn');
+  btn.disabled = true;
+  document.getElementById('loadingBox').classList.add('show');
+  setStep(1);
+
+  try {
+    // Step 1: 서버 API로 네이버 실데이터 수집
+    document.getElementById('loadingSub').textContent = '서버에서 네이버 API를 직접 호출 중...';
+    const apiUrl = `${BASE_URL}/api/blog?blogId=${encodeURIComponent(blogId)}`;
+    const naverRes = await fetch(apiUrl);
+    if (!naverRes.ok) throw new Error('서버 API 호출 실패. Vercel 배포를 확인해주세요.');
+    const nd = await naverRes.json();
+
+    setStep(2);
+    document.getElementById('loadingSub').textContent = '수집된 데이터 처리 중...';
+    await new Promise(r => setTimeout(r, 300));
+
+    setStep(3);
+    document.getElementById('loadingSub').textContent = 'AI가 등급을 산정합니다...';
+
+    // Step 2: Claude API로 등급 산정 (스트리밍)
+    const dataCtx = `
+실제 네이버 블로그 실측 데이터:
+- 블로그명: ${nd.blogName || '미확인'}
+- 닉네임: ${nd.nickName || '미확인'}
+- 대표주제: ${nd.topic || '주제없음'}
+- 전체방문자: ${nd.totalVisitor || '비공개'}
+- 오늘방문자: ${nd.todayVisitor || '비공개'}
+- 팔로워/팔로잉: ${nd.follower || '비공개'}
+- 생성일: ${nd.created || '비공개'}
+- 운영기간: ${nd.period || '비공개'}
+- 전체게시글: ${nd.totalPost || '비공개'}
+- 총스크랩: ${nd.scrap || '비공개'}
+- 애드포스트: ${nd.adpost != null ? (nd.adpost ? '있음' : '없음') : '비공개'}
+- 데이터 출처: ${nd.sources.join(', ') || '없음'}`;
+
+    const sys = `당신은 네이버 블로그 지수 전문 분석가입니다. 실제 측정된 데이터를 바탕으로 정확하게 등급을 산정하세요. 순수 JSON만 반환 (백틱/마크다운 절대 금지).
+
+【등급 기준】
+저품질1 < 저품질2 < 일반 < 준최적화1~7 < NB1~3 < 최적화1~4
+
+【등급 산정 기준】
+- 전체방문자 30만+ & 게시글 300+ & 운영 10년+ → 최적화 3~4단계
+- 전체방문자 10~30만 & 게시글 200~300 → 최적화 1~2단계 또는 NB
+- 전체방문자 5~10만 & 게시글 100~200 → 준최적화 5~7단계
+- 전체방문자 1~5만 & 게시글 50~100 → 준최적화 2~4단계
+- 전체방문자 1만 미만 또는 게시글 50 미만 → 일반~준최적화 2단계
+
+JSON 형식:
+{
+  "grade": "최적화 4단계",
+  "score": 94.3,
+  "periodLabel": "1년 이내 기준",
+  "analysis": "현황·강점·개선점·전망 포함 500자 이상 상세 분석"
+}`;
+
+    const aiRes = await fetch(CLAUDE_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1200,
+        stream: true,
+        system: sys,
+        messages: [{ role: 'user', content: dataCtx + '\n\n이 데이터로 블로그 지수 등급을 산정하세요.' }]
+      })
+    });
+
+    if (!aiRes.ok) {
+      const e = await aiRes.json().catch(() => ({}));
+      throw new Error(e?.error?.message || `Claude API 오류 (${aiRes.status})`);
+    }
+
+    setStep(4);
+    document.getElementById('loadingSub').textContent = '분석 리포트 생성 중...';
+
+    const reader = aiRes.body.getReader();
+    const dec = new TextDecoder();
+    let raw = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      for (const line of dec.decode(value, { stream: true }).split('\n')) {
+        if (line.startsWith('data: ')) {
+          try {
+            const j = JSON.parse(line.slice(6));
+            if (j.type === 'content_block_delta' && j.delta?.text) raw += j.delta.text;
+          } catch {}
+        }
+      }
+    }
+
+    let ai;
+    try {
+      const clean = raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+      const m = clean.match(/\{[\s\S]*\}/);
+      if (!m) throw 0;
+      ai = JSON.parse(m[0]);
+    } catch { throw new Error('AI 응답 파싱 실패. 다시 시도해주세요.'); }
+
+    // Render
+    const gradeC = gc(ai.grade);
+    const nowStr = new Date().toLocaleString('ko-KR', {
+      year:'numeric', month:'2-digit', day:'2-digit',
+      hour:'2-digit', minute:'2-digit', second:'2-digit'
+    });
+
+    document.getElementById('rBlogTitle').textContent = nd.blogName || blogId;
+    setCell('rNick', nd.nickName);
+    setCell('rId', blogId);
+    setCell('rTopic', nd.topic || '주제없음');
+    setCell('rTotalVisit', nd.totalVisitor, true);
+    setCell('rTodayVisit', nd.todayVisitor, true);
+    setCell('rFollower', nd.follower);
+    setCell('rCreated', nd.created);
+    setCell('rPeriod', nd.period);
+    document.getElementById('rAdpost').textContent = nd.adpost === true ? '✅' : nd.adpost === false ? '❌' : '—';
+    setCell('rTotalPost', nd.totalPost, true);
+    setCell('rScrap', nd.scrap);
+    document.getElementById('rFetchTime').textContent = nowStr;
+    document.getElementById('rPeriodLabel').textContent = ai.periodLabel || '1년 이내 기준';
+    document.getElementById('rScore').textContent = (ai.score || 0) + '점';
+    document.getElementById('rScore').className = `score-display ${gradeC}`;
+    document.getElementById('rGrade').innerHTML = `<span class="grade-badge ${gradeC}">${ai.grade || '알 수 없음'}</span>`;
+
+    // Source bar
+    const hasReal = nd.sources && nd.sources.length > 0;
+    document.getElementById('srcBar').innerHTML = `
+      <span class="src-chip">
+        <div class="dot" style="background:${hasReal ? 'var(--accent)' : 'var(--red)'}"></div>
+        ${hasReal ? '✅ 네이버 실데이터 ('+nd.sources.join('+')+')' : '⚠️ 실데이터 수집 실패'}
+      </span>
+      <span class="src-chip">
+        <div class="dot" style="background:var(--orange)"></div>
+        🤖 등급·분석: AI 산정
+      </span>`;
+
+    document.getElementById('loadingBox').classList.remove('show');
+    document.getElementById('resultWrap').classList.add('show');
+
+    // Typewriter
+    const el = document.getElementById('rAnalysis');
+    el.innerHTML = '<span class="cursor"></span>';
+    let i = 0;
+    const text = ai.analysis || '';
+    const tw = setInterval(() => {
+      if (i >= text.length) { clearInterval(tw); el.innerHTML = text; return; }
+      el.innerHTML = text.slice(0, ++i) + '<span class="cursor"></span>';
+    }, 12);
+
+    const shortTime = nowStr.slice(5, 16);
+    hist = [{ blogId, grade: ai.grade || '—', gc: gradeC, time: shortTime },
+            ...hist.filter(h => h.blogId !== blogId)].slice(0, 15);
+    localStorage.setItem('bh6', JSON.stringify(hist));
+    renderHist();
+
+  } catch(e) {
+    document.getElementById('loadingBox').classList.remove('show');
+    showErr(e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderHist() {
+  const el = document.getElementById('historyList');
+  if (!hist.length) { el.innerHTML = '<div class="empty-h">아직 분석 기록이 없습니다</div>'; return; }
+  el.innerHTML = hist.map(h => `
+    <div class="history-item" onclick="loadH('${h.blogId}')">
+      <div><div class="hid">${h.blogId}</div><div class="ht">${h.time||''}</div></div>
+      <span class="hgt ${h.gc}">${h.grade}</span>
+    </div>`).join('');
+}
+
+function loadH(id) { document.getElementById('blogInput').value = id; analyze(); }
+function clearHistory() { hist = []; localStorage.removeItem('bh6'); renderHist(); }
+document.getElementById('blogInput').addEventListener('keydown', e => { if(e.key==='Enter') analyze(); });
+renderHist();
+</script>
+</body>
+</html>
